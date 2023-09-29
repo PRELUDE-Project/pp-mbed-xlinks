@@ -21,7 +21,7 @@ int main(){
         pc.printf("d: SERVICE_IP_ADR\r\n");
         pc.printf("e: SERVICE_VERSION\r\n");
         pc.printf("x: SERVICE_HOUSE_KEEPING\r\n");
-        pc.printf(">> Select the command:  ");
+        pc.printf(">> Select the command: ");
         cmd = pc.getc();
         switch(cmd){
             case 'a':
