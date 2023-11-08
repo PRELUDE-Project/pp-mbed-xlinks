@@ -116,13 +116,13 @@ U8* xlk_send_request(U32 service_request, U32 service_event, U16 spi_msg_length)
     }
     cs = 1;
 
-    uint8_t current_ptr12 = xlk_rbuf_ptr[12];
+    uint8_t current_ptr8 = xlk_rbuf_ptr[8];
     while(1){
-        if(current_ptr12 == uint8_t(cmnStr.product_key[1])){
+        if(current_ptr8 == uint8_t(cmnStr.product_key[0])){
             break;
         }
         xlk_rbuf_ptr  = xlk_empty_send();
-        current_ptr12 = xlk_rbuf_ptr[12];
+        current_ptr8 = xlk_rbuf_ptr[8];
     }
     return xlk_rbuf_ptr;
 }
@@ -488,13 +488,13 @@ U8* xlk_service_rf_xmt_data_fifoInit(void){
     }
     cs = 1;
 
-    uint8_t current_ptr12 = xlk_rbuf_ptr[12];
+    uint8_t current_ptr8 = xlk_rbuf_ptr[8];
     while(1){
-        if(current_ptr12 == uint8_t(cmnStr.product_key[1])){
+        if(current_ptr8 == uint8_t(cmnStr.product_key[0])){
             break;
         }
         xlk_rbuf_ptr  = xlk_empty_send();
-        current_ptr12 = xlk_rbuf_ptr[12];
+        current_ptr8 = xlk_rbuf_ptr[8];
     }
     return xlk_rbuf_ptr;
 }
@@ -503,27 +503,27 @@ U8* xlk_service_rf_xmt_dummydata(void){
     cmnStr.service_event     = SERVICE_SET | SERVICE_RF_XMT_DATA;
 
     rfXmtDataStr.PktType     = PKT_TRANSFER_FRM; // 0b10
-    rfXmtDataStr.ErrInf      = 0x00000;          
-    rfXmtDataStr.PktLen      = 8;                // 0b1000
-    rfXmtDataStr.EthFirst    = 0x0;          
-    rfXmtDataStr.EthLast     = 0x0;
-    rfXmtDataStr.EthNumByte  = 0x00;
-    rfXmtDataStr.ControlBits = (U32(rfXmtDataStr.PktType  << 30) | 
-                                U32(rfXmtDataStr.ErrInf   << 25) | 
-                                U32(rfXmtDataStr.PktLen   << 13) | 
-                                U32(rfXmtDataStr.EthFirst << 12) | 
-                                U32(rfXmtDataStr.EthLast  << 11) |
-                                U32(rfXmtDataStr.EthNumByte));
-    printf("rfXmtDataStr.ControlBits: 0x%04x\r\n", rfXmtDataStr.ControlBits);
-    rfXmtDataStr.MoreInfo    = SERVICE_XMT_MAGIC;
+    rfXmtDataStr.ErrInf      = 0b00000;          
+    rfXmtDataStr.PktLen      = 1432;                // 0b1000
+    rfXmtDataStr.EthFirst    = 0b0;          
+    rfXmtDataStr.EthLast     = 0b0;
+    rfXmtDataStr.EthNumByte  = 0b00000000000;
+    rfXmtDataStr.ControlBits = (U32(rfXmtDataStr.PktType) | 
+                                U32(rfXmtDataStr.ErrInf     << 2 ) | 
+                                U32(rfXmtDataStr.PktLen     << 7 ) | 
+                                U32(rfXmtDataStr.EthFirst   << 19) | 
+                                U32(rfXmtDataStr.EthLast    << 20) |
+                                U32(rfXmtDataStr.EthNumByte << 21));
+    // rfXmtDataStr.MoreInfo    = SERVICE_XMT_MAGIC;
+    rfXmtDataStr.MoreInfo    = 0x00000000;
     spiMsgStr.lengh          = 28+rfXmtDataStr.PktLen;
     spiMsgStr.ident          = SPI_SERVICE;
     U16 flame_length         = spiMsgStr.lengh + 16; 
     for(int i = 0; i < rfXmtDataStr.PktLen; i++){
         rfXmtDataStr.Payload[i] = 0xEF;
     }
+    printf("rfXmtDataStr.ControlBits: 0x%08x\r\n", rfXmtDataStr.ControlBits);
     // printf("spiMsgStr.lengh: %d, spiMsgStr.lengh >> 8: %d, spiMsgStr.ident: %d, spiMsgStr.from: %d\r\n", uint8_t(spiMsgStr.lengh), uint8_t(spiMsgStr.lengh >> 8), spiMsgStr.ident,spiMsgStr.from);
-
     cs = 0;
     xlk_rbuf_ptr[0] = spi.write(uint8_t(START_SEQUENCE >> 24));
     xlk_rbuf_ptr[1] = spi.write(uint8_t(START_SEQUENCE >> 16));
@@ -564,6 +564,10 @@ U8* xlk_service_rf_xmt_dummydata(void){
     xlk_rbuf_ptr[29] = spi.write(uint8_t(rfXmtDataStr.ControlBits >> 8));
     xlk_rbuf_ptr[30] = spi.write(uint8_t(rfXmtDataStr.ControlBits >> 16));
     xlk_rbuf_ptr[31] = spi.write(uint8_t(rfXmtDataStr.ControlBits >> 24));
+    // xlk_rbuf_ptr[28] = spi.write(uint8_t(rfXmtDataStr.ControlBits >> 24));
+    // xlk_rbuf_ptr[29] = spi.write(uint8_t(rfXmtDataStr.ControlBits >> 16));
+    // xlk_rbuf_ptr[30] = spi.write(uint8_t(rfXmtDataStr.ControlBits >> 8));
+    // xlk_rbuf_ptr[31] = spi.write(uint8_t(rfXmtDataStr.ControlBits));
 
     xlk_rbuf_ptr[32] = spi.write(uint8_t(rfXmtDataStr.MoreInfo));
     xlk_rbuf_ptr[33] = spi.write(uint8_t(rfXmtDataStr.MoreInfo >> 8));
@@ -572,30 +576,32 @@ U8* xlk_service_rf_xmt_dummydata(void){
 
     // SPI_MSG_DATA_STRUCT footer
     for(int i = 0; i < rfXmtDataStr.PktLen; i++){
-        xlk_rbuf_ptr[35+i] = spi.write(rfXmtDataStr.Payload[i]);
+        xlk_rbuf_ptr[36+i] = spi.write(rfXmtDataStr.Payload[i]);
         // printf("rfXmtDataStr.PktLen: 0x%x, rfXmtDataStr.Payload[i]: 0x%x\r\n", rfXmtDataStr.PktLen, rfXmtDataStr.Payload[i]);
     }
-    xlk_rbuf_ptr[35 + rfXmtDataStr.PktLen] = spi.write(0x00);
-    xlk_rbuf_ptr[35 + rfXmtDataStr.PktLen + 1] = spi.write(0x00);
-    xlk_rbuf_ptr[35 + rfXmtDataStr.PktLen + 2] = spi.write(0x00);
-    xlk_rbuf_ptr[35 + rfXmtDataStr.PktLen + 3] = spi.write(0x00);
+    xlk_rbuf_ptr[36 + rfXmtDataStr.PktLen]     = spi.write(0x00);
+    xlk_rbuf_ptr[36 + rfXmtDataStr.PktLen + 1] = spi.write(0x00);
+    xlk_rbuf_ptr[36 + rfXmtDataStr.PktLen + 2] = spi.write(0x00);
+    xlk_rbuf_ptr[36 + rfXmtDataStr.PktLen + 3] = spi.write(0x00);
 
-    xlk_rbuf_ptr[35 + rfXmtDataStr.PktLen + 4]     = spi.write(uint8_t(END_SEQUENCE >> 24));
-    xlk_rbuf_ptr[35 + rfXmtDataStr.PktLen + 5] = spi.write(uint8_t(END_SEQUENCE >> 16));
-    xlk_rbuf_ptr[35 + rfXmtDataStr.PktLen + 6] = spi.write(uint8_t(END_SEQUENCE >> 8));
-    xlk_rbuf_ptr[35 + rfXmtDataStr.PktLen + 7] = spi.write(uint8_t(END_SEQUENCE));
-    for (int i = 1; i < (2200 - (35 + rfXmtDataStr.PktLen + 7)); i++) {
-        xlk_rbuf_ptr[35 + rfXmtDataStr.PktLen + 7 + i] = spi.write(0);
+    xlk_rbuf_ptr[36 + rfXmtDataStr.PktLen + 4] = spi.write(uint8_t(END_SEQUENCE >> 24));
+    xlk_rbuf_ptr[36 + rfXmtDataStr.PktLen + 5] = spi.write(uint8_t(END_SEQUENCE >> 16));
+    xlk_rbuf_ptr[36 + rfXmtDataStr.PktLen + 6] = spi.write(uint8_t(END_SEQUENCE >> 8));
+    xlk_rbuf_ptr[36 + rfXmtDataStr.PktLen + 7] = spi.write(uint8_t(END_SEQUENCE));
+
+    // printf("36 + rfXmtDataStr.PktLen + 7: %d\r\n", 36 + rfXmtDataStr.PktLen + 7);
+    for (int i = 1; i < (2200 - (36 + rfXmtDataStr.PktLen + 7)); i++) {
+        xlk_rbuf_ptr[36 + rfXmtDataStr.PktLen + 7 + i] = spi.write(0);
     }
     cs = 1;
 
-    uint8_t current_ptr12 = xlk_rbuf_ptr[12];
+    uint8_t current_ptr8 = xlk_rbuf_ptr[8];
     while(1){
-        if(current_ptr12 == uint8_t(cmnStr.product_key[1])){
+        if(current_ptr8 == uint8_t(cmnStr.product_key[0])){
             break;
         }
         xlk_rbuf_ptr  = xlk_empty_send();
-        current_ptr12 = xlk_rbuf_ptr[12];
+        current_ptr8 = xlk_rbuf_ptr[8];
     }
     return xlk_rbuf_ptr;
 }

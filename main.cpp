@@ -102,7 +102,7 @@ int main(){
                 case 'g':
                     pc.printf("g\r\n");
                     xlk_rbuf_ptr = xlk_service_rf_xmt_dummydata();
-                    ptr_printf(xlk_rbuf_ptr, 120);
+                    ptr_printf(xlk_rbuf_ptr, 44);
                     break;
                 case 'h':
                     pc.printf("h\r\n");
@@ -112,6 +112,9 @@ int main(){
                 case 'i':
                     break;
                 case 'j':
+                    pc.printf("j\r\n");
+                    xlk_rbuf_ptr = xlk_send_request(SERVICE_GET, SERVICE_DEVICE_CONF, 20);
+                    ptr_printf(xlk_rbuf_ptr, 136);
                     break;
                 case 'k':
                     pc.printf("k\r\n");
